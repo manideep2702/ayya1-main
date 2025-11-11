@@ -65,6 +65,38 @@ export default function AnnaPassPage() {
       setError(e?.message || "Could not confirm");
     }
   }
+  function goToScanner() {
+    const ua = (navigator?.userAgent || "").toLowerCase();
+    const isAndroid = ua.includes("android");
+    const isIOS = ua.includes("iphone") || ua.includes("ipad") || ua.includes("ipod");
+    const fallback = () => {
+      try {
+        window.location.assign("/admin/annadanam/scan");
+      } catch {
+        const a = document.createElement("a");
+        a.href = "/admin/annadanam/scan";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      }
+    };
+    // Give external app a moment; then fall back to in-app scanner
+    const timer = setTimeout(fallback, 1200);
+    try {
+      if (isAndroid) {
+        // Open Google Lens (will deep-link to the Google app if installed)
+        window.location.href = "https://lens.google/";
+      } else if (isIOS) {
+        // Try Apple's Code Scanner (private scheme but widely supported on recent iOS)
+        window.location.href = "x-apple-codescanner://";
+      } else {
+        fallback();
+      }
+    } catch {
+      clearTimeout(timer);
+      fallback();
+    }
+  }
 
   return (
     <main className="min-h-screen p-6 md:p-10">
@@ -107,10 +139,17 @@ export default function AnnaPassPage() {
               <div className="text-sm">{row.attended_at ? String(row.attended_at).slice(0,19).replace('T',' ') : "—"}</div>
             </div>
             {isAdmin && (
-              <div className="pt-3">
-                <button onClick={confirmAttendance} className="rounded border px-3 py-2">
-                  Confirm Attendance (Admin)
-                </button>
+              <div className="pt-3 flex gap-3">
+                {!row.attended_at && (
+                  <button onClick={confirmAttendance} className="rounded border px-3 py-2">
+                    Confirm Attendance (Admin)
+                  </button>
+                )}
+                {row.attended_at && (
+                  <button onClick={goToScanner} className="rounded bg-black text-white px-3 py-2">
+                    Next (Lens / Code Scanner)
+                  </button>
+                )}
               </div>
             )}
             <p className="mt-4 text-xs text-muted-foreground">

@@ -67,7 +67,11 @@ export default function AdminAnnadanamPage() {
     setLoading(true);
     try {
       const supabase = getSupabaseBrowserClient();
-      const sess = annaSession && annaSession !== "all" ? annaSession : null;
+      // Grouped timing options: for grouped selections, fetch all and filter client-side
+      const groupAfternoonTwoHours = annaSession === "1pm-3pm";
+      const groupEveningTwoHours = annaSession === "8pm-10pm";
+      const isGrouped = groupAfternoonTwoHours || groupEveningTwoHours;
+      const sess = !isGrouped && annaSession && annaSession !== "all" ? annaSession : null;
       const { data, error } = await supabase.rpc("admin_list_annadanam_bookings", {
         start_date: annaDate || null,
         end_date: annaDate || null,
@@ -76,7 +80,19 @@ export default function AdminAnnadanamPage() {
         offset_rows: 0,
       });
       if (error) throw error;
-      const r: any[] = Array.isArray(data) ? data : [];
+      let r: any[] = Array.isArray(data) ? data : [];
+      if (groupAfternoonTwoHours) {
+        const afternoonSet = new Set<string>([
+          "1:00 PM - 1:30 PM","1:30 PM - 2:00 PM","2:00 PM - 2:30 PM","2:30 PM - 3:00 PM",
+        ]);
+        r = r.filter((row) => afternoonSet.has(String(row?.session || "")));
+      }
+      if (groupEveningTwoHours) {
+        const eveningSet = new Set<string>([
+          "8:00 PM - 8:30 PM","8:30 PM - 9:00 PM","9:00 PM - 9:30 PM","9:30 PM - 10:00 PM",
+        ]);
+        r = r.filter((row) => eveningSet.has(String(row?.session || "")));
+      }
       setRows(r);
       if (r.length === 0) show({ title: "No results", description: "No Annadanam bookings match the filters.", variant: "info" });
     } catch (e: any) {
@@ -111,6 +127,7 @@ export default function AdminAnnadanamPage() {
           <h1 className="text-2xl font-bold text-center">Annadanam</h1>
           <div className="mt-2 flex justify-between">
             <button onClick={() => router.push("/admin")} className="rounded border px-3 py-1.5">Back</button>
+            <button onClick={() => router.push("/admin/annadanam/scan")} className="rounded bg-black text-white px-4 py-2">📷 QR Scanner</button>
           </div>
 
           <div className="rounded-xl border p-6 space-y-4 bg-card/70 mt-6">
@@ -123,6 +140,8 @@ export default function AdminAnnadanamPage() {
                 <label className="text-sm" htmlFor="annaSession">Timing</label>
                 <select id="annaSession" className="w-full rounded border px-3 py-2 bg-background" value={annaSession} onChange={(e)=>setAnnaSession(e.target.value)}>
                   <option value="all">All Timings</option>
+                  <option value="1pm-3pm">1:00 PM to 3:00 PM</option>
+                  <option value="8pm-10pm">8:00 PM to 10:00 PM</option>
                   <option>1:00 PM - 1:30 PM</option>
                   <option>1:30 PM - 2:00 PM</option>
                   <option>2:00 PM - 2:30 PM</option>

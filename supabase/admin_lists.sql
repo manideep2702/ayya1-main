@@ -9,7 +9,7 @@ create or replace function public.admin_list_annadanam_bookings(
   offset_rows int default 0
 )
 returns table (
-  id uuid,
+  id text,
   created_at timestamptz,
   date date,
   session text,
@@ -24,7 +24,7 @@ returns table (
 begin
   if not public.admin_can() then return; end if;
   return query
-    select b.id, b.created_at, b.date, b.session, b.user_id, b.name, b.email, b.phone, b.qty, b.status, b.attended_at
+    select b.id::text, b.created_at, b.date, b.session, b.user_id, b.name, b.email, b.phone, b.qty, b.status, b.attended_at
     from public."Bookings" b
     where (start_date is null or b.date >= start_date)
       and (end_date is null or b.date <= end_date)
