@@ -536,6 +536,41 @@ EXCEPTION WHEN others THEN NULL; END $$;
 
 GRANT EXECUTE ON FUNCTION public.mark_annadanam_attended(uuid) TO anon, authenticated; 
 
+-- Mark attended by booking id (text), for admin UI convenience
+DO $$
+BEGIN
+  CREATE OR REPLACE FUNCTION public.mark_annadanam_attended_by_id(id_text text)
+  RETURNS TABLE (
+    id text,
+    created_at timestamptz,
+    date date,
+    session text,
+    name text,
+    email text,
+    phone text,
+    qty int,
+    status text,
+    attended_at timestamptz
+  ) AS $$
+  DECLARE
+    updated public."Bookings";
+  BEGIN
+    UPDATE public."Bookings"
+      SET attended_at = now()
+      WHERE id::text = id_text AND attended_at IS NULL
+      RETURNING * INTO updated;
+    IF updated.id IS NULL THEN
+      SELECT * INTO updated FROM public."Bookings" WHERE id::text = id_text LIMIT 1;
+    END IF;
+    RETURN QUERY SELECT
+      updated.id::text, updated.created_at, updated.date, updated.session,
+      updated.name, updated.email, updated.phone, updated.qty,
+      updated.status, updated.attended_at;
+  END;
+  $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+EXCEPTION WHEN others THEN NULL; END $$;
+
+GRANT EXECUTE ON FUNCTION public.mark_annadanam_attended_by_id(text) TO anon, authenticated;
 -- Optional: seed Slots for the 2025-11-05 to 2026-01-07 season
 -- Run once; safe to re-run (uses ON CONFLICT DO NOTHING)
 DO $$

@@ -7,6 +7,7 @@ export default function AnnaPassPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [row, setRow] = useState<any | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -22,6 +23,14 @@ export default function AnnaPassPage() {
           return;
         }
         const supabase = getSupabaseBrowserClient();
+        // Admin check (email in env)
+        try {
+          const { data: s } = await supabase.auth.getSession();
+          const email = (s?.session?.user?.email || "").toLowerCase();
+          const envRaw = (process.env.NEXT_PUBLIC_ADMIN_EMAILS || process.env.NEXT_PUBLIC_ADMIN_EMAIL || "").toLowerCase();
+          const allowed = envRaw.split(/[\s,;]+/).filter(Boolean);
+          setIsAdmin(!!email && (allowed.length === 0 || allowed.includes(email)));
+        } catch {}
         // Query by token using RPC (works for static export)
         const { data, error } = await supabase.rpc("lookup_annadanam_pass", { token });
         if (error) {
@@ -43,6 +52,19 @@ export default function AnnaPassPage() {
       }
     })();
   }, []);
+
+  async function confirmAttendance() {
+    if (!row) return;
+    try {
+      const supabase = getSupabaseBrowserClient();
+      const { data, error } = await supabase.rpc("mark_annadanam_attended", { token: (new URLSearchParams(window.location.search)).get("t") });
+      if (error) { setError(error.message || "Could not confirm"); return; }
+      const updated: any = Array.isArray(data) ? (data[0] ?? null) : (data ?? null);
+      if (updated) setRow(updated);
+    } catch (e: any) {
+      setError(e?.message || "Could not confirm");
+    }
+  }
 
   return (
     <main className="min-h-screen p-6 md:p-10">
@@ -84,6 +106,13 @@ export default function AnnaPassPage() {
               <div className="text-sm text-muted-foreground">Attended</div>
               <div className="text-sm">{row.attended_at ? String(row.attended_at).slice(0,19).replace('T',' ') : "—"}</div>
             </div>
+            {isAdmin && (
+              <div className="pt-3">
+                <button onClick={confirmAttendance} className="rounded border px-3 py-2">
+                  Confirm Attendance (Admin)
+                </button>
+              </div>
+            )}
             <p className="mt-4 text-xs text-muted-foreground">
               Show this pass to the admin volunteer at the Annadanam counter during your session time.
             </p>
