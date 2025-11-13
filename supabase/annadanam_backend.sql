@@ -183,7 +183,6 @@ BEGIN
       '1:30 PM - 2:00 PM',
       '2:00 PM - 2:30 PM',
       '2:30 PM - 3:00 PM',
-      '8:00 PM - 8:30 PM',
       '8:30 PM - 9:00 PM',
       '9:00 PM - 9:30 PM',
       '9:30 PM - 10:00 PM'
@@ -193,10 +192,9 @@ BEGIN
     WHEN '1:30 PM - 2:00 PM' THEN 2
     WHEN '2:00 PM - 2:30 PM' THEN 3
     WHEN '2:30 PM - 3:00 PM' THEN 4
-    WHEN '8:00 PM - 8:30 PM' THEN 5
-    WHEN '8:30 PM - 9:00 PM' THEN 6
-    WHEN '9:00 PM - 9:30 PM' THEN 7
-    WHEN '9:30 PM - 10:00 PM' THEN 8
+    WHEN '8:30 PM - 9:00 PM' THEN 5
+    WHEN '9:00 PM - 9:30 PM' THEN 6
+    WHEN '9:30 PM - 10:00 PM' THEN 7
     ELSE 999 END;
 END;
 $$ LANGUAGE plpgsql STABLE;
@@ -241,7 +239,6 @@ BEGIN
   ELSIF s = '1:30 PM - 2:00 PM' THEN start_local := time '13:30'; end_local := time '14:00';
   ELSIF s = '2:00 PM - 2:30 PM' THEN start_local := time '14:00'; end_local := time '14:30';
   ELSIF s = '2:30 PM - 3:00 PM' THEN start_local := time '14:30'; end_local := time '15:00';
-  ELSIF s = '8:00 PM - 8:30 PM' THEN start_local := time '20:00'; end_local := time '20:30';
   ELSIF s = '8:30 PM - 9:00 PM' THEN start_local := time '20:30'; end_local := time '21:00';
   ELSIF s = '9:00 PM - 9:30 PM' THEN start_local := time '21:00'; end_local := time '21:30';
   ELSIF s = '9:30 PM - 10:00 PM' THEN start_local := time '21:30'; end_local := time '22:00';
@@ -290,7 +287,7 @@ BEGIN
   PERFORM 1 FROM public."Slots"
       WHERE date = d AND session = ANY (
         CASE WHEN is_afternoon THEN ARRAY['1:00 PM - 1:30 PM','1:30 PM - 2:00 PM','2:00 PM - 2:30 PM','2:30 PM - 3:00 PM']
-             ELSE ARRAY['8:00 PM - 8:30 PM','8:30 PM - 9:00 PM','9:00 PM - 9:30 PM','9:30 PM - 10:00 PM'] END
+             ELSE ARRAY['8:30 PM - 9:00 PM','9:00 PM - 9:30 PM','9:30 PM - 10:00 PM'] END
       )
       FOR UPDATE;
   SELECT COALESCE(SUM(CASE WHEN b.status = 'confirmed' THEN b.qty ELSE 0 END), 0)
@@ -298,7 +295,7 @@ BEGIN
     FROM public."Bookings" AS b
     WHERE b.date = d AND b.session = ANY (
       CASE WHEN is_afternoon THEN ARRAY['1:00 PM - 1:30 PM','1:30 PM - 2:00 PM','2:00 PM - 2:30 PM','2:30 PM - 3:00 PM']
-           ELSE ARRAY['8:00 PM - 8:30 PM','8:30 PM - 9:00 PM','9:00 PM - 9:30 PM','9:30 PM - 10:00 PM'] END
+           ELSE ARRAY['8:30 PM - 9:00 PM','9:00 PM - 9:30 PM','9:30 PM - 10:00 PM'] END
     );
   IF group_total + qty > 150 THEN
     RAISE EXCEPTION 'Session full';
@@ -323,7 +320,7 @@ BEGIN
       SET status = 'closed'
       WHERE date = d AND session = ANY (
         CASE WHEN is_afternoon THEN ARRAY['1:00 PM - 1:30 PM','1:30 PM - 2:00 PM','2:00 PM - 2:30 PM','2:30 PM - 3:00 PM']
-             ELSE ARRAY['8:00 PM - 8:30 PM','8:30 PM - 9:00 PM','9:00 PM - 9:30 PM','9:30 PM - 10:00 PM'] END
+             ELSE ARRAY['8:30 PM - 9:00 PM','9:00 PM - 9:30 PM','9:30 PM - 10:00 PM'] END
       );
   END IF;
   RETURN new_row;
@@ -383,7 +380,6 @@ BEGIN
   ELSIF s = '1:30 PM - 2:00 PM' THEN start_local := time '13:30'; end_local := time '14:00';
   ELSIF s = '2:00 PM - 2:30 PM' THEN start_local := time '14:00'; end_local := time '14:30';
   ELSIF s = '2:30 PM - 3:00 PM' THEN start_local := time '14:30'; end_local := time '15:00';
-  ELSIF s = '8:00 PM - 8:30 PM' THEN start_local := time '20:00'; end_local := time '20:30';
   ELSIF s = '8:30 PM - 9:00 PM' THEN start_local := time '20:30'; end_local := time '21:00';
   ELSIF s = '9:00 PM - 9:30 PM' THEN start_local := time '21:00'; end_local := time '21:30';
   ELSIF s = '9:30 PM - 10:00 PM' THEN start_local := time '21:30'; end_local := time '22:00';
@@ -428,7 +424,7 @@ BEGIN
   PERFORM 1 FROM public."Slots"
       WHERE date = d AND session = ANY (
         CASE WHEN is_afternoon THEN ARRAY['1:00 PM - 1:30 PM','1:30 PM - 2:00 PM','2:00 PM - 2:30 PM','2:30 PM - 3:00 PM']
-             ELSE ARRAY['8:00 PM - 8:30 PM','8:30 PM - 9:00 PM','9:00 PM - 9:30 PM','9:30 PM - 10:00 PM'] END
+             ELSE ARRAY['8:30 PM - 9:00 PM','9:00 PM - 9:30 PM','9:30 PM - 10:00 PM'] END
       )
       FOR UPDATE;
   SELECT COALESCE(SUM(CASE WHEN b.status = 'confirmed' THEN b.qty ELSE 0 END), 0)
@@ -436,7 +432,7 @@ BEGIN
     FROM public."Bookings" AS b
     WHERE b.date = d AND b.session = ANY (
       CASE WHEN is_afternoon THEN ARRAY['1:00 PM - 1:30 PM','1:30 PM - 2:00 PM','2:00 PM - 2:30 PM','2:30 PM - 3:00 PM']
-           ELSE ARRAY['8:00 PM - 8:30 PM','8:30 PM - 9:00 PM','9:00 PM - 9:30 PM','9:30 PM - 10:00 PM'] END
+           ELSE ARRAY['8:30 PM - 9:00 PM','9:00 PM - 9:30 PM','9:30 PM - 10:00 PM'] END
     );
   IF group_total + qty > 150 THEN
     RAISE EXCEPTION 'Session full';
@@ -461,7 +457,7 @@ BEGIN
       SET status = 'closed'
       WHERE date = d AND session = ANY (
         CASE WHEN is_afternoon THEN ARRAY['1:00 PM - 1:30 PM','1:30 PM - 2:00 PM','2:00 PM - 2:30 PM','2:30 PM - 3:00 PM']
-             ELSE ARRAY['8:00 PM - 8:30 PM','8:30 PM - 9:00 PM','9:00 PM - 9:30 PM','9:30 PM - 10:00 PM'] END
+             ELSE ARRAY['8:30 PM - 9:00 PM','9:00 PM - 9:30 PM','9:30 PM - 10:00 PM'] END
       );
   END IF;
   RETURN new_row;
@@ -477,98 +473,92 @@ GRANT EXECUTE ON FUNCTION public.reserve_annadanam_by_date(date, text, uuid, tex
 GRANT EXECUTE ON FUNCTION public.reserve_annadanam_by_date_dev(date, text, uuid, text, text, text, integer, text) TO service_role;
 
 -- Public read of pass details by token (for static export)
-DO $$
-BEGIN
-  CREATE OR REPLACE FUNCTION public.lookup_annadanam_pass(token uuid)
-  RETURNS TABLE (
-    id uuid,
-    created_at timestamptz,
-    date date,
-    session text,
-    name text,
-    email text,
-    phone text,
-    qty int,
-    status text,
-    attended_at timestamptz
-  ) AS $$
-    SELECT id, created_at, date, session, name, email, phone, qty, status, attended_at
-    FROM public."Bookings"
-    WHERE qr_token = token
-  $$ LANGUAGE sql SECURITY DEFINER SET search_path = public;
-EXCEPTION WHEN others THEN NULL; END $$;
+DROP FUNCTION IF EXISTS public.lookup_annadanam_pass(uuid);
+CREATE OR REPLACE FUNCTION public.lookup_annadanam_pass(token uuid)
+RETURNS TABLE (
+  id text,
+  created_at timestamptz,
+  date date,
+  session text,
+  name text,
+  email text,
+  phone text,
+  qty int,
+  status text,
+  attended_at timestamptz
+) AS $$
+  SELECT id::text AS id, created_at, date, session, name, email, phone, qty, status, attended_at
+  FROM public."Bookings"
+  WHERE qr_token = token
+$$ LANGUAGE sql SECURITY DEFINER SET search_path = public;
 
 GRANT EXECUTE ON FUNCTION public.lookup_annadanam_pass(uuid) TO anon, authenticated;
 
 -- Public mark attendance by token (security definer)
-DO $$
+DROP FUNCTION IF EXISTS public.mark_annadanam_attended(uuid);
+CREATE OR REPLACE FUNCTION public.mark_annadanam_attended(token uuid)
+RETURNS TABLE (
+  id text,
+  created_at timestamptz,
+  date date,
+  session text,
+  name text,
+  email text,
+  phone text,
+  qty int,
+  status text,
+  attended_at timestamptz
+) AS $$
+DECLARE
+  updated public."Bookings";
 BEGIN
-  CREATE OR REPLACE FUNCTION public.mark_annadanam_attended(token uuid)
-  RETURNS TABLE (
-    id uuid,
-    created_at timestamptz,
-    date date,
-    session text,
-    name text,
-    email text,
-    phone text,
-    qty int,
-    status text,
-    attended_at timestamptz
-  ) AS $$
-  DECLARE
-    updated public."Bookings";
-  BEGIN
-    UPDATE public."Bookings"
-      SET attended_at = now()
-      WHERE qr_token = token AND attended_at IS NULL
-      RETURNING * INTO updated;
-    IF updated.id IS NULL THEN
-      -- Either invalid token or already marked; return the current row for clarity
-      SELECT * INTO updated FROM public."Bookings" WHERE qr_token = token LIMIT 1;
-    END IF;
-    RETURN QUERY SELECT
-      updated.id, updated.created_at, updated.date, updated.session, updated.name, updated.email,
-      updated.phone, updated.qty, updated.status, updated.attended_at;
-  END;
-  $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
-EXCEPTION WHEN others THEN NULL; END $$;
+  UPDATE public."Bookings" b
+    SET attended_at = now()
+    WHERE b.qr_token = token AND b.attended_at IS NULL
+    RETURNING * INTO updated;
+  IF updated.id IS NULL THEN
+    -- Either invalid token or already marked; return the current row for clarity
+    SELECT * INTO updated FROM public."Bookings" WHERE qr_token = token LIMIT 1;
+  END IF;
+  RETURN QUERY SELECT
+    updated.id::text AS id, updated.created_at, updated.date, updated.session, updated.name, updated.email,
+    updated.phone, updated.qty, updated.status, updated.attended_at;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 GRANT EXECUTE ON FUNCTION public.mark_annadanam_attended(uuid) TO anon, authenticated; 
 
 -- Mark attended by booking id (text), for admin UI convenience
-DO $$
+DROP FUNCTION IF EXISTS public.mark_annadanam_attended_by_id(text);
+CREATE OR REPLACE FUNCTION public.mark_annadanam_attended_by_id(id_text text)
+RETURNS TABLE (
+  id text,
+  created_at timestamptz,
+  date date,
+  session text,
+  name text,
+  email text,
+  phone text,
+  qty int,
+  status text,
+  attended_at timestamptz
+) AS $$
+DECLARE
+  updated public."Bookings";
 BEGIN
-  CREATE OR REPLACE FUNCTION public.mark_annadanam_attended_by_id(id_text text)
-  RETURNS TABLE (
-    id text,
-    created_at timestamptz,
-    date date,
-    session text,
-    name text,
-    email text,
-    phone text,
-    qty int,
-    status text,
-    attended_at timestamptz
-  ) AS $$
-  DECLARE
-    updated public."Bookings";
-  BEGIN
-    UPDATE public."Bookings"
-      SET attended_at = now()
-      WHERE id::text = id_text AND attended_at IS NULL
-      RETURNING * INTO updated;
-    IF updated.id IS NULL THEN
-      SELECT * INTO updated FROM public."Bookings" WHERE id::text = id_text LIMIT 1;
-    END IF;
-    RETURN QUERY SELECT
-      updated.id::text, updated.created_at, updated.date, updated.session,
-      updated.name, updated.email, updated.phone, updated.qty,
-      updated.status, updated.attended_at;
-  END;
-  $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
-EXCEPTION WHEN others THEN NULL; END $$;
+  UPDATE public."Bookings" b
+    SET attended_at = now()
+    WHERE b.id::text = id_text AND b.attended_at IS NULL
+    RETURNING * INTO updated;
+  IF updated.id IS NULL THEN
+    SELECT * INTO updated FROM public."Bookings" WHERE id::text = id_text LIMIT 1;
+  END IF;
+  RETURN QUERY SELECT
+    updated.id::text, updated.created_at, updated.date, updated.session,
+    updated.name, updated.email, updated.phone, updated.qty,
+    updated.status, updated.attended_at;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 GRANT EXECUTE ON FUNCTION public.mark_annadanam_attended_by_id(text) TO anon, authenticated;
 -- Optional: seed Slots for the 2025-11-05 to 2026-01-07 season
@@ -584,7 +574,6 @@ BEGIN
     INSERT INTO public."Slots" (date, session, capacity, status) VALUES (v_date, '2:00 PM - 2:30 PM', 40, 'open') ON CONFLICT (date, session) DO NOTHING;
     INSERT INTO public."Slots" (date, session, capacity, status) VALUES (v_date, '2:30 PM - 3:00 PM', 40, 'open') ON CONFLICT (date, session) DO NOTHING;
     -- Evening sessions
-    INSERT INTO public."Slots" (date, session, capacity, status) VALUES (v_date, '8:00 PM - 8:30 PM', 40, 'open') ON CONFLICT (date, session) DO NOTHING;
     INSERT INTO public."Slots" (date, session, capacity, status) VALUES (v_date, '8:30 PM - 9:00 PM', 40, 'open') ON CONFLICT (date, session) DO NOTHING;
     INSERT INTO public."Slots" (date, session, capacity, status) VALUES (v_date, '9:00 PM - 9:30 PM', 40, 'open') ON CONFLICT (date, session) DO NOTHING;
     INSERT INTO public."Slots" (date, session, capacity, status) VALUES (v_date, '9:30 PM - 10:00 PM', 40, 'open') ON CONFLICT (date, session) DO NOTHING;
@@ -599,7 +588,6 @@ BEGIN
     INSERT INTO public."Slots" (date, session, capacity, status) VALUES (DATE '2025-10-31', '1:30 PM - 2:00 PM', 40, 'open') ON CONFLICT (date, session) DO NOTHING;
     INSERT INTO public."Slots" (date, session, capacity, status) VALUES (DATE '2025-10-31', '2:00 PM - 2:30 PM', 40, 'open') ON CONFLICT (date, session) DO NOTHING;
     INSERT INTO public."Slots" (date, session, capacity, status) VALUES (DATE '2025-10-31', '2:30 PM - 3:00 PM', 40, 'open') ON CONFLICT (date, session) DO NOTHING;
-    INSERT INTO public."Slots" (date, session, capacity, status) VALUES (DATE '2025-10-31', '8:00 PM - 8:30 PM', 40, 'open') ON CONFLICT (date, session) DO NOTHING;
     INSERT INTO public."Slots" (date, session, capacity, status) VALUES (DATE '2025-10-31', '8:30 PM - 9:00 PM', 40, 'open') ON CONFLICT (date, session) DO NOTHING;
     INSERT INTO public."Slots" (date, session, capacity, status) VALUES (DATE '2025-10-31', '9:00 PM - 9:30 PM', 40, 'open') ON CONFLICT (date, session) DO NOTHING;
     INSERT INTO public."Slots" (date, session, capacity, status) VALUES (DATE '2025-10-31', '9:30 PM - 10:00 PM', 40, 'open') ON CONFLICT (date, session) DO NOTHING;
@@ -610,6 +598,6 @@ BEGIN
     WHERE (date BETWEEN DATE '2025-11-05' AND DATE '2026-01-07' OR date = DATE '2025-10-31')
       AND session IN (
         '1:00 PM - 1:30 PM','1:30 PM - 2:00 PM','2:00 PM - 2:30 PM','2:30 PM - 3:00 PM',
-        '8:00 PM - 8:30 PM','8:30 PM - 9:00 PM','9:00 PM - 9:30 PM','9:30 PM - 10:00 PM'
+        '8:30 PM - 9:00 PM','9:00 PM - 9:30 PM','9:30 PM - 10:00 PM'
       );
 END $$;

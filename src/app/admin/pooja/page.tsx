@@ -6,9 +6,11 @@ import { useAlert } from "@/components/ui/alert-provider";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import AdminGuard from "../_components/AdminGuard";
 import { createTablePDF } from "../_components/pdf";
+import { DatePicker } from "@/components/ui/date-picker";
+import { format } from "date-fns";
 
 export default function AdminPoojaPage() {
-  const [poojaDate, setPoojaDate] = useState<string>("");
+  const [poojaDate, setPoojaDate] = useState<Date | undefined>(undefined);
   const [poojaSession, setPoojaSession] = useState<string>("all");
   const [rows, setRows] = useState<any[] | null>(null);
   const [loading, setLoading] = useState(false);
@@ -21,9 +23,7 @@ export default function AdminPoojaPage() {
       if (!poojaDate) return true;
       if (poojaSession === "all") return true;
       const today = new Date();
-      const [y, m, d] = poojaDate.split("-").map((v) => parseInt(v, 10));
-      if (!y || !m || !d) return true;
-      const target = new Date(y, m - 1, d, 0, 0, 0, 0);
+      const target = new Date(poojaDate.getFullYear(), poojaDate.getMonth(), poojaDate.getDate(), 0, 0, 0, 0);
       const todayMid = new Date(today.getFullYear(), today.getMonth(), today.getDate());
       if (target < todayMid) return true; // past dates: always allow
       if (target > todayMid) return false; // future: disallow
@@ -48,9 +48,10 @@ export default function AdminPoojaPage() {
     try {
       const supabase = getSupabaseBrowserClient();
       const sess = poojaSession && poojaSession !== "all" ? poojaSession : null;
+      const dateStr = poojaDate ? format(poojaDate, "yyyy-MM-dd") : null;
       const { data, error } = await supabase.rpc("admin_list_pooja_bookings", {
-        start_date: poojaDate || null,
-        end_date: poojaDate || null,
+        start_date: dateStr,
+        end_date: dateStr,
         sess,
         limit_rows: 500,
         offset_rows: 0,
@@ -101,7 +102,7 @@ export default function AdminPoojaPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `pooja-bookings${poojaDate ? `-${poojaDate}` : ""}.json`;
+    a.download = `pooja-bookings${poojaDate ? `-${format(poojaDate, "yyyy-MM-dd")}` : ""}.json`;
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -112,7 +113,7 @@ export default function AdminPoojaPage() {
     if (!rows || rows.length === 0) { alert("Nothing to download. Load pooja bookings first."); return; }
     await createTablePDF(
       "Pooja Bookings",
-      poojaDate || undefined,
+      poojaDate ? format(poojaDate, "yyyy-MM-dd") : undefined,
       [
         { key: "date", label: "Date", w: 90 },
         { key: "session", label: "Session", w: 100, align: "center" },
@@ -126,7 +127,7 @@ export default function AdminPoojaPage() {
         { key: "attended_at", label: "Attended At", w: 130 },
       ],
       rows,
-      `pooja-bookings${poojaDate ? `-${poojaDate}` : ""}`
+      `pooja-bookings${poojaDate ? `-${format(poojaDate, "yyyy-MM-dd")}` : ""}`
     );
   };
 
@@ -169,12 +170,12 @@ export default function AdminPoojaPage() {
                 <label className="block text-sm font-medium text-gray-300 mb-2" htmlFor="poojaDate">
                   Date
                 </label>
-                <input 
+                <DatePicker 
                   id="poojaDate" 
-                  type="date" 
-                  className="w-full rounded-lg border border-gray-600 px-4 py-2.5 bg-gray-800 text-white focus:border-purple-500 focus:ring-2 focus:ring-purple-900 transition-colors outline-none" 
-                  value={poojaDate} 
-                  onChange={(e)=>setPoojaDate(e.target.value)} 
+                  date={poojaDate} 
+                  onDateChange={setPoojaDate} 
+                  placeholder="Select date" 
+                  buttonClassName="w-full px-4 py-2.5 bg-gray-800 text-white border-gray-600 hover:bg-gray-700"
                 />
               </div>
               <div>
@@ -183,7 +184,7 @@ export default function AdminPoojaPage() {
                 </label>
                 <select 
                   id="poojaSession" 
-                  className="w-full rounded-lg border border-gray-600 px-4 py-2.5 bg-gray-800 text-white focus:border-purple-500 focus:ring-2 focus:ring-purple-900 transition-colors outline-none" 
+                  className="w-full rounded-lg border border-gray-600 px-4 py-2.5 bg-gray-800 text-white focus:border-purple-500 focus:ring-2 focus:ring-purple-900 transition-colors outline-none h-11" 
                   value={poojaSession} 
                   onChange={(e)=>setPoojaSession(e.target.value)}
                 >

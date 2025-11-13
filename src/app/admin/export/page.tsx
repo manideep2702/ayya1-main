@@ -5,17 +5,19 @@ import { useAlert } from "@/components/ui/alert-provider";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import AdminGuard from "../_components/AdminGuard";
+import { DatePicker } from "@/components/ui/date-picker";
+import { format } from "date-fns";
 
 export default function AdminExportPage() {
-  const [start, setStart] = useState<string>("");
-  const [end, setEnd] = useState<string>("");
+  const [start, setStart] = useState<Date | undefined>(undefined);
+  const [end, setEnd] = useState<Date | undefined>(undefined);
   const { show } = useAlert();
   const router = useRouter();
 
-  async function fetchViaRpc(start: string, end: string) {
+  async function fetchViaRpc(start: Date | undefined, end: Date | undefined) {
     const supabase = getSupabaseBrowserClient();
-    const toIsoTs = (d?: string) => (d ? new Date(d + "T00:00:00").toISOString() : null);
-    const toDate = (d?: string) => (d ? d : null);
+    const toIsoTs = (d?: Date) => (d ? d.toISOString() : null);
+    const toDate = (d?: Date) => (d ? format(d, "yyyy-MM-dd") : null);
     const [pooja, anna, dons, contacts, vols] = await Promise.all([
       supabase.rpc("admin_list_pooja_bookings", { start_date: toDate(start), end_date: toDate(end), sess: null, limit_rows: 5000, offset_rows: 0 }),
       supabase.rpc("admin_list_annadanam_bookings", { start_date: toDate(start), end_date: toDate(end), sess: null, limit_rows: 5000, offset_rows: 0 }),
@@ -115,18 +117,29 @@ export default function AdminExportPage() {
 
           <div className="rounded-xl border p-6 space-y-4 bg-card/70 mt-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <label className="text-sm" htmlFor="start">Start date</label>
-                <input id="start" type="date" className="w-full rounded border px-3 py-2 bg-background" value={start} onChange={(e)=>setStart(e.target.value)} />
+              <div className="space-y-2">
+                <label className="text-sm font-medium" htmlFor="start">Start Date</label>
+                <DatePicker 
+                  id="start" 
+                  date={start} 
+                  onDateChange={setStart} 
+                  placeholder="Select start date" 
+                />
               </div>
-              <div className="space-y-1">
-                <label className="text-sm" htmlFor="end">End date</label>
-                <input id="end" type="date" className="w-full rounded border px-3 py-2 bg-background" value={end} onChange={(e)=>setEnd(e.target.value)} />
+              <div className="space-y-2">
+                <label className="text-sm font-medium" htmlFor="end">End Date</label>
+                <DatePicker 
+                  id="end" 
+                  date={end} 
+                  onDateChange={setEnd} 
+                  placeholder="Select end date" 
+                  fromDate={start}
+                />
               </div>
             </div>
             <div className="flex gap-3 pt-2">
-              <button onClick={() => downloadAllData("json")} className="rounded bg-black text-white px-4 py-2">Download JSON</button>
-              <button onClick={() => downloadAllData("csv")} className="rounded border px-4 py-2">Download CSV</button>
+              <button onClick={() => downloadAllData("json")} className="rounded bg-black text-white px-4 py-2 hover:bg-gray-800">Download JSON</button>
+              <button onClick={() => downloadAllData("csv")} className="rounded border px-4 py-2 hover:bg-gray-100">Download CSV</button>
             </div>
             <p className="text-xs text-muted-foreground">Exports all data (Annadanam, Pooja, Donations, Contact, Volunteers) within the date range.</p>
           </div>

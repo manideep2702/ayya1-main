@@ -30,7 +30,8 @@ export interface Slot {
 export interface Booking {
   id: string;
   created_at: string;
-  slot_id: string;
+  date: string; // YYYY-MM-DD
+  session: string;
   user_id: string;
   name: string;
   email: string;
@@ -101,7 +102,6 @@ const AFTERNOON_SLOTS: { label: string; start: string; end: string }[] = [
   { label: "2:30 PM - 3:00 PM", start: "14:30", end: "15:00" },
 ];
 const EVENING_SLOTS: { label: string; start: string; end: string }[] = [
-  { label: "8:00 PM - 8:30 PM", start: "20:00", end: "20:30" },
   { label: "8:30 PM - 9:00 PM", start: "20:30", end: "21:00" },
   { label: "9:00 PM - 9:30 PM", start: "21:00", end: "21:30" },
   { label: "9:30 PM - 10:00 PM", start: "21:30", end: "22:00" },
@@ -388,6 +388,7 @@ function SessionPicker({
   };
   const renderCard = (title: string, options: { label: string; slot: Slot | null }[], value: string, setValue: (v: string) => void) => {
     const disabled = !(value && canPick(value));
+    const isEvening = title === "Evening";
     let infoText = "";
     if (value && !canPick(value)) {
       const isAfternoon = AFTERNOON_SLOTS.some((a) => a.label === value);
@@ -404,6 +405,13 @@ function SessionPicker({
             <Clock className="h-5 w-5 text-primary" />
             <h3 className="font-semibold text-lg">{title}</h3>
           </div>
+          {isEvening && (
+            <div className="mb-3 p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-md">
+              <p className="text-xs text-blue-800 dark:text-blue-200">
+                <strong>Note:</strong> Please come early by 5 minutes and allowed up to 5 minutes more.
+              </p>
+            </div>
+          )}
           <div className="space-y-3">
             <select
               className="w-full rounded-md border border-border bg-background p-2 text-sm"
@@ -445,10 +453,62 @@ function BookingDialog({ open, onClose, slot, onConfirm }: {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [loadingProfile, setLoadingProfile] = useState(false);
+  const { ensure } = useSupabase();
 
   useEffect(() => {
     if (open) {
       setQty(1);
+      // Fetch user profile data and pre-fill form
+      (async () => {
+        setLoadingProfile(true);
+        try {
+          const supabase = await ensure();
+          const { data: userRes } = await supabase.auth.getUser();
+          const user = userRes?.user;
+          if (!user) {
+            setLoadingProfile(false);
+            return;
+          }
+          
+          // Fetch profile from Profile-Table
+          let { data: profile } = await supabase
+            .from("Profile-Table")
+            .select("name, full_name, email, phone")
+            .eq("user_id", user.id)
+            .maybeSingle();
+          
+          // Fallback to id field if user_id doesn't match
+          if (!profile) {
+            const { data: altProfile } = await supabase
+              .from("Profile-Table")
+              .select("name, full_name, email, phone")
+              .eq("id", user.id)
+              .maybeSingle();
+            profile = altProfile;
+          }
+          
+          if (profile) {
+            // Pre-fill with profile data
+            const profileName = profile.name || profile.full_name || "";
+            const profileEmail = profile.email || user.email || "";
+            const profilePhone = profile.phone || "";
+            
+            setName(profileName);
+            setEmail(profileEmail);
+            setPhone(profilePhone);
+          } else {
+            // Fallback to user metadata if profile not found
+            const userName = user.user_metadata?.full_name || user.user_metadata?.name || "";
+            setName(userName);
+            setEmail(user.email || "");
+          }
+        } catch (err) {
+          console.error("Failed to load profile:", err);
+        } finally {
+          setLoadingProfile(false);
+        }
+      })();
     }
   }, [open]);
 
@@ -468,27 +528,33 @@ function BookingDialog({ open, onClose, slot, onConfirm }: {
         <DialogHeader>
           <DialogTitle>Book {slot.session} Session</DialogTitle>
         </DialogHeader>
-        <form onSubmit={submit} className="space-y-4">
-          {/* Persons field removed: single-person booking enforced server-side */}
-          <div className="space-y-2">
-            <Label htmlFor="name">Name</Label>
-            <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" required />
+        {loadingProfile ? (
+          <div className="py-8 text-center text-muted-foreground">
+            <p>Loading your details...</p>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" required />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="phone">Phone Number</Label>
-            <Input id="phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Your phone number" />
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button type="submit">Confirm Booking</Button>
-          </DialogFooter>
-        </form>
+        ) : (
+          <form onSubmit={submit} className="space-y-4">
+            {/* Persons field removed: single-person booking enforced server-side */}
+            <div className="space-y-2">
+              <Label htmlFor="name">Name</Label>
+              <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" required />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" required />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="phone">Phone Number</Label>
+              <Input id="phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Your phone number" required />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={onClose}>
+                Cancel
+              </Button>
+              <Button type="submit">Confirm Booking</Button>
+            </DialogFooter>
+          </form>
+        )}
       </DialogContent>
     </Dialog>
   );
@@ -505,6 +571,7 @@ export default function AnnadanamBooking() {
   const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null);
   const [myBookings, setMyBookings] = useState<Booking[]>([]);
   const [showMyBookings, setShowMyBookings] = useState(false);
+  const [bookingInProgress, setBookingInProgress] = useState(false);
   const { ensure } = useSupabase();
   const { show } = useAlert();
 
@@ -586,8 +653,8 @@ export default function AnnadanamBooking() {
       const userId = userRes?.user?.id;
       if (!userId) return setMyBookings([]);
       const { data, error } = await supabase
-        .from("Annadanam-Bookings")
-        .select("id,created_at,slot_id,user_id,name,email,phone,qty,status")
+        .from("Bookings")
+        .select("id,created_at,date,session,user_id,name,email,phone,qty,status")
         .eq("user_id", userId)
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -644,19 +711,94 @@ export default function AnnadanamBooking() {
     fetchMyBookings();
   }, []);
 
-  const handleBook = (slotId: string) => {
+  const handleBook = async (slotId: string) => {
+    if (bookingInProgress) return; // Prevent double-booking
+    
     const slot = slots.find((s) => s.id === slotId) || null;
-    setSelectedSlot(slot);
-    setDialogOpen(Boolean(slot));
+    if (!slot) return;
+    
+    // Check if user has complete profile data
+    try {
+      setBookingInProgress(true);
+      const supabase = await ensure();
+      const { data: userRes } = await supabase.auth.getUser();
+      const user = userRes?.user;
+      
+      if (!user) {
+        setBookingInProgress(false);
+        show({ title: "Sign in required", description: "Please sign in to book.", variant: "warning" });
+        try {
+          const next = `${window.location.pathname}${window.location.search}`;
+          window.location.assign(`/sign-in/?next=${encodeURIComponent(next)}`);
+        } catch {}
+        return;
+      }
+      
+      // Fetch profile from Profile-Table
+      let { data: profile } = await supabase
+        .from("Profile-Table")
+        .select("name, full_name, email, phone")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      
+      // Fallback to id field if user_id doesn't match
+      if (!profile) {
+        const { data: altProfile } = await supabase
+          .from("Profile-Table")
+          .select("name, full_name, email, phone")
+          .eq("id", user.id)
+          .maybeSingle();
+        profile = altProfile;
+      }
+      
+      // Check if all required data is present
+      const profileName = profile?.name || profile?.full_name || "";
+      const profileEmail = profile?.email || user.email || "";
+      const profilePhone = profile?.phone || "";
+      
+      // If all data is present, book directly
+      if (profileName && profileEmail && profilePhone) {
+        // Book directly without showing dialog
+        await handleConfirmBooking(
+          {
+            qty: 1,
+            name: profileName,
+            email: profileEmail,
+            phone: profilePhone
+          },
+          slot
+        );
+        setBookingInProgress(false);
+      } else {
+        // Show dialog to collect missing data
+        setBookingInProgress(false);
+        setSelectedSlot(slot);
+        setDialogOpen(true);
+      }
+    } catch (err) {
+      console.error("Failed to check profile:", err);
+      setBookingInProgress(false);
+      // Fallback: show dialog
+      setSelectedSlot(slot);
+      setDialogOpen(true);
+    }
   };
 
-  const handleConfirmBooking = async (data: { qty: number; name: string; email: string; phone: string }) => {
-    const slot = selectedSlot;
+  const handleConfirmBooking = async (data: { qty: number; name: string; email: string; phone: string }, slotOverride?: Slot) => {
+    const slot = slotOverride || selectedSlot;
     if (!slot) return;
     const remaining = Math.max(0, slot.capacity - slot.booked_count);
     const qty = 1;
     if (!data.email) {
       show({ title: "Email required", description: "Please enter your email.", variant: "warning" });
+      return;
+    }
+    if (!data.phone) {
+      show({ title: "Phone required", description: "Please enter your phone number.", variant: "warning" });
+      return;
+    }
+    if (!data.name) {
+      show({ title: "Name required", description: "Please enter your name.", variant: "warning" });
       return;
     }
     try {
@@ -671,6 +813,33 @@ export default function AnnadanamBooking() {
           window.location.assign(`/sign-in/?next=${encodeURIComponent(next)}`);
         } catch {}
         return;
+      }
+      
+      // Save user data to profile for future bookings
+      try {
+        const profileUpdate = {
+          name: data.name,
+          full_name: data.name,
+          email: data.email,
+          phone: data.phone,
+        };
+        
+        // Try updating by user_id first
+        const { error: updateErr1 } = await supabase
+          .from("Profile-Table")
+          .update(profileUpdate)
+          .eq("user_id", user.id);
+        
+        // If that fails, try by id
+        if (updateErr1) {
+          await supabase
+            .from("Profile-Table")
+            .update(profileUpdate)
+            .eq("id", user.id);
+        }
+      } catch (profileErr) {
+        console.error("Failed to update profile:", profileErr);
+        // Continue with booking even if profile update fails
       }
       // Block booking if Aadhaar/PAN not uploaded (skip for admins)
       try {
@@ -808,20 +977,36 @@ export default function AnnadanamBooking() {
           {showMyBookings ? (
             <div className="space-y-4">
               <h4 className="font-semibold">My Bookings</h4>
-              {myBookings.map((b) => (
-                <Card key={b.id}>
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium">Qty: {b.qty}</p>
-                        <p className="text-sm text-muted-foreground">{b.name} • {b.email}</p>
-                        <p className="text-xs text-muted-foreground">{new Date(b.created_at).toLocaleString()}</p>
+              {myBookings.map((b) => {
+                // Format the date
+                let displayDate = "";
+                try {
+                  const date = new Date(b.date);
+                  displayDate = date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+                } catch {
+                  displayDate = b.date;
+                }
+                
+                return (
+                  <Card key={b.id}>
+                    <CardContent className="p-4">
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="font-semibold text-base">{b.session}</div>
+                          <Badge>{b.status}</Badge>
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          <div>📅 {displayDate}</div>
+                          <div>👤 {b.name}</div>
+                          <div>📧 {b.email}</div>
+                          {b.phone && <div>📱 {b.phone}</div>}
+                          <div className="text-xs mt-1">Booked: {new Date(b.created_at).toLocaleString()}</div>
+                        </div>
                       </div>
-                      <Badge>{b.status}</Badge>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           ) : (
             <SessionPicker slots={slots} loading={loading} onBook={handleBook} date={selectedDate} />

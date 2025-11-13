@@ -6,15 +6,17 @@ import SabarimalaDropdown from "@/components/ui/sabarimala-dropdown";
 
 export default function AdminDataDropdown() {
   const router = useRouter();
-  const [show, setShow] = useState(() => {
-    try {
-      return localStorage.getItem("ayya.admin.ok") === "1";
-    } catch {
-      return false;
-    }
-  });
+  const [show, setShow] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
+    // Check localStorage first for faster initial display
+    try {
+      const cached = localStorage.getItem("ayya.admin.ok") === "1";
+      if (cached) setShow(true);
+    } catch {}
+
     let cancelled = false;
     (async () => {
       try {
@@ -39,7 +41,9 @@ export default function AdminDataDropdown() {
     return () => { cancelled = true; };
   }, []);
 
-  if (!show) return null;
+  // Don't render anything until mounted to avoid hydration mismatch
+  if (!mounted || !show) return null;
+  
   return (
     <div className="flex items-center px-2" suppressHydrationWarning>
       <SabarimalaDropdown

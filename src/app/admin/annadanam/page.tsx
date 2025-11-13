@@ -6,9 +6,11 @@ import { useAlert } from "@/components/ui/alert-provider";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import AdminGuard from "../_components/AdminGuard";
 import { createTablePDF } from "../_components/pdf";
+import { DatePicker } from "@/components/ui/date-picker";
+import { format } from "date-fns";
 
 export default function AdminAnnadanamPage() {
-  const [annaDate, setAnnaDate] = useState<string>("");
+  const [annaDate, setAnnaDate] = useState<Date | undefined>(undefined);
   const [annaSession, setAnnaSession] = useState<string>("all");
   const [rows, setRows] = useState<any[] | null>(null);
   const [loading, setLoading] = useState(false);
@@ -69,9 +71,10 @@ export default function AdminAnnadanamPage() {
       const groupEveningTwoHours = annaSession === "8pm-10pm";
       const isGrouped = groupAfternoonTwoHours || groupEveningTwoHours;
       const sess = !isGrouped && annaSession && annaSession !== "all" ? annaSession : null;
+      const dateStr = annaDate ? format(annaDate, "yyyy-MM-dd") : null;
       const { data, error } = await supabase.rpc("admin_list_annadanam_bookings", {
-        start_date: annaDate || null,
-        end_date: annaDate || null,
+        start_date: dateStr,
+        end_date: dateStr,
         sess,
         limit_rows: 500,
         offset_rows: 0,
@@ -86,7 +89,7 @@ export default function AdminAnnadanamPage() {
       }
       if (groupEveningTwoHours) {
         const eveningSet = new Set<string>([
-          "8:00 PM - 8:30 PM","8:30 PM - 9:00 PM","9:00 PM - 9:30 PM","9:30 PM - 10:00 PM",
+          "8:30 PM - 9:00 PM","9:00 PM - 9:30 PM","9:30 PM - 10:00 PM",
         ]);
         r = r.filter((row) => eveningSet.has(String(row?.session || "")));
       }
@@ -697,12 +700,12 @@ export default function AdminAnnadanamPage() {
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" htmlFor="annaDate">
                   Date
                 </label>
-                <input 
+                <DatePicker 
                   id="annaDate" 
-                  type="date" 
-                  className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" 
-                  value={annaDate} 
-                  onChange={(e)=>setAnnaDate(e.target.value)} 
+                  date={annaDate} 
+                  onDateChange={setAnnaDate} 
+                  placeholder="Select date" 
+                  buttonClassName="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
                 />
               </div>
               <div>
@@ -711,18 +714,17 @@ export default function AdminAnnadanamPage() {
                 </label>
                 <select 
                   id="annaSession" 
-                  className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" 
+                  className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all h-11" 
                   value={annaSession} 
                   onChange={(e)=>setAnnaSession(e.target.value)}
                 >
                   <option value="all">All Sessions</option>
                   <option value="1pm-3pm">Afternoon (1:00 PM - 3:00 PM)</option>
-                  <option value="8pm-10pm">Evening (8:00 PM - 10:00 PM)</option>
+                  <option value="8pm-10pm">Evening (8:30 PM - 10:00 PM)</option>
                   <option>1:00 PM - 1:30 PM</option>
                   <option>1:30 PM - 2:00 PM</option>
                   <option>2:00 PM - 2:30 PM</option>
                   <option>2:30 PM - 3:00 PM</option>
-                  <option>8:00 PM - 8:30 PM</option>
                   <option>8:30 PM - 9:00 PM</option>
                   <option>9:00 PM - 9:30 PM</option>
                   <option>9:30 PM - 10:00 PM</option>

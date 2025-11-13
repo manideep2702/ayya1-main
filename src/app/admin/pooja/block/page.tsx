@@ -5,13 +5,15 @@ import { useAlert } from "@/components/ui/alert-provider";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import AdminGuard from "@/app/admin/_components/AdminGuard";
 import { useRouter } from "next/navigation";
+import { DatePicker } from "@/components/ui/date-picker";
+import { format } from "date-fns";
 
 type BlockItem = { date: string; session: string };
 
 export default function PoojaBlockPage() {
   const [loading, setLoading] = useState(false);
   const [items, setItems] = useState<BlockItem[]>([]);
-  const [date, setDate] = useState("");
+  const [date, setDate] = useState<Date | undefined>(undefined);
   const [session, setSession] = useState<string>("");
   const { show } = useAlert();
   const router = useRouter();
@@ -72,10 +74,11 @@ export default function PoojaBlockPage() {
 
   const add = () => {
     if (!date || !session) return;
-    const key = `${date}|${session}`;
+    const dateStr = format(date, "yyyy-MM-dd");
+    const key = `${dateStr}|${session}`;
     const exists = items.some((x) => `${x.date}|${x.session}` === key);
     if (exists) return;
-    const next = [...items, { date, session }];
+    const next = [...items, { date: dateStr, session }];
     next.sort((a,b)=> a.date.localeCompare(b.date) || a.session.localeCompare(b.session));
     save(next);
   };
@@ -122,12 +125,12 @@ export default function PoojaBlockPage() {
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" htmlFor="d">
                   Date
                 </label>
-                <input 
+                <DatePicker 
                   id="d" 
-                  type="date" 
-                  value={date} 
-                  onChange={(e)=>setDate(e.target.value)} 
-                  className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2.5 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:border-purple-500 focus:ring-2 focus:ring-purple-200 dark:focus:ring-purple-900 transition-colors outline-none" 
+                  date={date} 
+                  onDateChange={setDate} 
+                  placeholder="Select date" 
+                  buttonClassName="w-full px-4 py-2.5 bg-white dark:bg-gray-900 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800"
                 />
               </div>
               

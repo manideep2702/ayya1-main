@@ -6,10 +6,12 @@ import { useAlert } from "@/components/ui/alert-provider";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import AdminGuard from "../_components/AdminGuard";
 import { createTablePDF } from "../_components/pdf";
+import { DatePicker } from "@/components/ui/date-picker";
+import { format } from "date-fns";
 
 export default function AdminVolunteersPage() {
-  const [volDate, setVolDate] = useState<string>("");
-  const [volEndDate, setVolEndDate] = useState<string>("");
+  const [volDate, setVolDate] = useState<Date | undefined>(undefined);
+  const [volEndDate, setVolEndDate] = useState<Date | undefined>(undefined);
   const [volSession, setVolSession] = useState<string>("all");
   const [rows, setRows] = useState<any[] | null>(null);
   const [loading, setLoading] = useState(false);
@@ -44,8 +46,8 @@ export default function AdminVolunteersPage() {
       const supabase = getSupabaseBrowserClient();
       const sess = volSession && volSession !== "all" ? volSession : null;
       const { data, error } = await supabase.rpc("admin_list_volunteer_bookings", {
-        start_date: volDate || null,
-        end_date: volEndDate || null,
+        start_date: volDate ? format(volDate, "yyyy-MM-dd") : null,
+        end_date: volEndDate ? format(volEndDate, "yyyy-MM-dd") : null,
         sess,
         limit_rows: 500,
         offset_rows: 0,
@@ -91,17 +93,28 @@ export default function AdminVolunteersPage() {
 
           <div className="rounded-xl border p-6 space-y-4 bg-card/70 mt-6">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="space-y-1">
-                <label className="text-sm" htmlFor="volStart">Start date</label>
-                <input id="volStart" type="date" className="w-full rounded border px-3 py-2 bg-background" value={volDate} onChange={(e)=>setVolDate(e.target.value)} />
+              <div className="space-y-2">
+                <label className="text-sm font-medium" htmlFor="volStart">Start date</label>
+                <DatePicker 
+                  id="volStart" 
+                  date={volDate} 
+                  onDateChange={setVolDate} 
+                  placeholder="Select start date" 
+                />
               </div>
-              <div className="space-y-1">
-                <label className="text-sm" htmlFor="volEnd">End date</label>
-                <input id="volEnd" type="date" className="w-full rounded border px-3 py-2 bg-background" value={volEndDate} onChange={(e)=>setVolEndDate(e.target.value)} />
+              <div className="space-y-2">
+                <label className="text-sm font-medium" htmlFor="volEnd">End date</label>
+                <DatePicker 
+                  id="volEnd" 
+                  date={volEndDate} 
+                  onDateChange={setVolEndDate} 
+                  placeholder="Select end date" 
+                  fromDate={volDate}
+                />
               </div>
-              <div className="space-y-1">
-                <label className="text-sm" htmlFor="volSession">Session</label>
-                <select id="volSession" className="w-full rounded border px-3 py-2 bg-background" value={volSession} onChange={(e)=>setVolSession(e.target.value)}>
+              <div className="space-y-2">
+                <label className="text-sm font-medium" htmlFor="volSession">Session</label>
+                <select id="volSession" className="w-full rounded border px-3 py-2 bg-background h-10" value={volSession} onChange={(e)=>setVolSession(e.target.value)}>
                   <option value="all">All</option>
                   <option value="Morning">Morning</option>
                   <option value="Evening">Evening</option>
@@ -109,10 +122,10 @@ export default function AdminVolunteersPage() {
               </div>
             </div>
             <div className="flex gap-3 pt-2 flex-wrap">
-              <button onClick={load} disabled={loading} className="rounded bg-black text-white px-4 py-2">{loading ? "Loading…" : "Load Volunteers"}</button>
-              <button onClick={()=> rows && toJSONFile(rows, `volunteer-bookings${volDate||volEndDate?`-${volDate||""}-${volEndDate||""}`:``}.json`)} className="rounded border px-4 py-2">Download JSON</button>
-              <button onClick={()=> rows && toCSV(rows, ["date","session","name","email","phone","role","note","created_at"], `volunteer-bookings${volDate||volEndDate?`-${volDate||""}-${volEndDate||""}`:""}.csv`)} className="rounded border px-4 py-2">Download CSV</button>
-              <button onClick={downloadPDF} className="rounded border px-4 py-2">Download PDF</button>
+              <button onClick={load} disabled={loading} className="rounded bg-black text-white px-4 py-2 hover:bg-gray-800 disabled:opacity-50">{loading ? "Loading…" : "Load Volunteers"}</button>
+              <button onClick={()=> rows && toJSONFile(rows, `volunteer-bookings${volDate||volEndDate?`-${volDate?format(volDate,"yyyy-MM-dd"):""}-${volEndDate?format(volEndDate,"yyyy-MM-dd"):""}`:``}.json`)} className="rounded border px-4 py-2 hover:bg-gray-100">Download JSON</button>
+              <button onClick={()=> rows && toCSV(rows, ["date","session","name","email","phone","role","note","created_at"], `volunteer-bookings${volDate||volEndDate?`-${volDate?format(volDate,"yyyy-MM-dd"):""}-${volEndDate?format(volEndDate,"yyyy-MM-dd"):""}`:""}.csv`)} className="rounded border px-4 py-2 hover:bg-gray-100">Download CSV</button>
+              <button onClick={downloadPDF} className="rounded border px-4 py-2 hover:bg-gray-100">Download PDF</button>
             </div>
             {error && <p className="text-sm text-red-600" role="alert">{error}</p>}
             {Array.isArray(rows) && (

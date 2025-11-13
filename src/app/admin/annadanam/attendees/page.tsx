@@ -5,9 +5,11 @@ import { useRouter } from "next/navigation";
 import { useAlert } from "@/components/ui/alert-provider";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import AdminGuard from "../../_components/AdminGuard";
+import { DatePicker } from "@/components/ui/date-picker";
+import { format } from "date-fns";
 
 export default function AnnadanamAttendeesPage() {
-  const [selectedDate, setSelectedDate] = useState<string>("");
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [sessionFilter, setSessionFilter] = useState<string>("all");
   const [loading, setLoading] = useState(false);
   const [attendedList, setAttendedList] = useState<any[]>([]);
@@ -25,11 +27,12 @@ export default function AnnadanamAttendeesPage() {
     setLoading(true);
     try {
       const supabase = getSupabaseBrowserClient();
+      const dateStr = format(selectedDate, "yyyy-MM-dd");
       
       // Fetch all bookings for the selected date
       const { data, error } = await supabase.rpc("admin_list_annadanam_bookings", {
-        start_date: selectedDate,
-        end_date: selectedDate,
+        start_date: dateStr,
+        end_date: dateStr,
         sess: null,
         limit_rows: 1000,
         offset_rows: 0,
@@ -44,7 +47,7 @@ export default function AnnadanamAttendeesPage() {
         const afternoonSessions = ["1:00 PM - 1:30 PM", "1:30 PM - 2:00 PM", "2:00 PM - 2:30 PM", "2:30 PM - 3:00 PM"];
         rows = rows.filter(r => afternoonSessions.includes(r.session));
       } else if (sessionFilter === "evening") {
-        const eveningSessions = ["8:00 PM - 8:30 PM", "8:30 PM - 9:00 PM", "9:00 PM - 9:30 PM", "9:30 PM - 10:00 PM"];
+        const eveningSessions = ["8:30 PM - 9:00 PM", "9:00 PM - 9:30 PM", "9:30 PM - 10:00 PM"];
         rows = rows.filter(r => eveningSessions.includes(r.session));
       }
       
@@ -519,11 +522,10 @@ export default function AnnadanamAttendeesPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
               <div>
                 <label className="block text-sm font-medium mb-2">Select Date</label>
-                <input
-                  type="date"
-                  className="w-full rounded border px-3 py-2 bg-background"
-                  value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
+                <DatePicker
+                  date={selectedDate}
+                  onDateChange={setSelectedDate}
+                  placeholder="Pick a date"
                 />
               </div>
               <div>
@@ -535,7 +537,7 @@ export default function AnnadanamAttendeesPage() {
                 >
                   <option value="all">All Sessions</option>
                   <option value="afternoon">Afternoon (1:00 PM - 3:00 PM)</option>
-                  <option value="evening">Evening (8:00 PM - 10:00 PM)</option>
+                  <option value="evening">Evening (8:30 PM - 10:00 PM)</option>
                 </select>
               </div>
               <button

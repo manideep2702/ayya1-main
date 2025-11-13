@@ -6,10 +6,12 @@ import { useAlert } from "@/components/ui/alert-provider";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import AdminGuard from "../_components/AdminGuard";
 import { createTablePDF } from "../_components/pdf";
+import { DatePicker } from "@/components/ui/date-picker";
+import { format } from "date-fns";
 
 export default function AdminContactPage() {
-  const [conStart, setConStart] = useState<string>("");
-  const [conEnd, setConEnd] = useState<string>("");
+  const [conStart, setConStart] = useState<Date | undefined>(undefined);
+  const [conEnd, setConEnd] = useState<Date | undefined>(undefined);
   const [rows, setRows] = useState<any[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -42,8 +44,8 @@ export default function AdminContactPage() {
     try {
       const supabase = getSupabaseBrowserClient();
       const { data, error } = await supabase.rpc("admin_list_contact_us", {
-        start_ts: conStart ? new Date(conStart).toISOString() : null,
-        end_ts: conEnd ? new Date(conEnd).toISOString() : null,
+        start_ts: conStart ? conStart.toISOString() : null,
+        end_ts: conEnd ? conEnd.toISOString() : null,
         limit_rows: 500,
         offset_rows: 0,
       });
@@ -89,20 +91,31 @@ export default function AdminContactPage() {
 
           <div className="rounded-xl border p-6 space-y-4 bg-card/70 mt-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <label className="text-sm" htmlFor="conStart">Start</label>
-                <input id="conStart" type="datetime-local" className="w-full rounded border px-3 py-2 bg-background" value={conStart} onChange={(e)=>setConStart(e.target.value)} />
+              <div className="space-y-2">
+                <label className="text-sm font-medium" htmlFor="conStart">Start Date</label>
+                <DatePicker 
+                  id="conStart" 
+                  date={conStart} 
+                  onDateChange={setConStart} 
+                  placeholder="Select start date" 
+                />
               </div>
-              <div className="space-y-1">
-                <label className="text-sm" htmlFor="conEnd">End</label>
-                <input id="conEnd" type="datetime-local" className="w-full rounded border px-3 py-2 bg-background" value={conEnd} onChange={(e)=>setConEnd(e.target.value)} />
+              <div className="space-y-2">
+                <label className="text-sm font-medium" htmlFor="conEnd">End Date</label>
+                <DatePicker 
+                  id="conEnd" 
+                  date={conEnd} 
+                  onDateChange={setConEnd} 
+                  placeholder="Select end date" 
+                  fromDate={conStart}
+                />
               </div>
             </div>
             <div className="flex gap-3 pt-2 flex-wrap">
-              <button onClick={load} disabled={loading} className="rounded bg-black text-white px-4 py-2">{loading ? "Loading…" : "Load Messages"}</button>
-              <button onClick={()=> rows && toJSONFile(rows, `contact-messages${conStart||conEnd?`-${conStart||""}-${conEnd||""}`:``}.json`)} className="rounded border px-4 py-2">Download JSON</button>
-              <button onClick={()=> rows && toCSV(rows, ["created_at","first_name","last_name","email","phone","subject","message","status"], `contact-messages${conStart||conEnd?`-${conStart||""}-${conEnd||""}`:""}.csv`)} className="rounded border px-4 py-2">Download CSV</button>
-              <button onClick={downloadPDF} className="rounded border px-4 py-2">Download PDF</button>
+              <button onClick={load} disabled={loading} className="rounded bg-black text-white px-4 py-2 hover:bg-gray-800 disabled:opacity-50">{loading ? "Loading…" : "Load Messages"}</button>
+              <button onClick={()=> rows && toJSONFile(rows, `contact-messages${conStart||conEnd?`-${conStart?format(conStart,"yyyy-MM-dd"):""}-${conEnd?format(conEnd,"yyyy-MM-dd"):""}`:``}.json`)} className="rounded border px-4 py-2 hover:bg-gray-100">Download JSON</button>
+              <button onClick={()=> rows && toCSV(rows, ["created_at","first_name","last_name","email","phone","subject","message","status"], `contact-messages${conStart||conEnd?`-${conStart?format(conStart,"yyyy-MM-dd"):""}-${conEnd?format(conEnd,"yyyy-MM-dd"):""}`:""}.csv`)} className="rounded border px-4 py-2 hover:bg-gray-100">Download CSV</button>
+              <button onClick={downloadPDF} className="rounded border px-4 py-2 hover:bg-gray-100">Download PDF</button>
             </div>
             {error && <p className="text-sm text-red-600" role="alert">{error}</p>}
             {Array.isArray(rows) && (

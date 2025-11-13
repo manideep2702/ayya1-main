@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ChevronDown } from "lucide-react";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 type Option = { label: string; onClick: () => void; Icon?: React.ReactNode };
@@ -16,6 +16,12 @@ type DropdownMenuProps = {
 
 export default function SabarimalaDropdown({ options, children, className }: DropdownMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   return (
     <div className="relative inline-block">
       <Button
@@ -24,13 +30,27 @@ export default function SabarimalaDropdown({ options, children, className }: Dro
           "h-8 rounded-full bg-white/15 px-4 text-xs font-medium text-white hover:bg-white/25",
           className
         )}
+        suppressHydrationWarning
       >
-        <motion.span whileHover={{ scale: 1.05 }} className="inline-flex items-center gap-2">
-          {children ?? "Sabarimala"}
-        </motion.span>
-        <motion.span className="ml-2" animate={{ rotate: isOpen ? 180 : 0 }} transition={{ duration: 0.4, ease: "easeInOut", type: "spring" }}>
-          <ChevronDown className="h-4 w-4" />
-        </motion.span>
+        {mounted ? (
+          <>
+            <motion.span whileHover={{ scale: 1.05 }} className="inline-flex items-center gap-2">
+              {children ?? "Sabarimala"}
+            </motion.span>
+            <motion.span className="ml-2" animate={{ rotate: isOpen ? 180 : 0 }} transition={{ duration: 0.4, ease: "easeInOut", type: "spring" }}>
+              <ChevronDown className="h-4 w-4" />
+            </motion.span>
+          </>
+        ) : (
+          <>
+            <span className="inline-flex items-center gap-2">
+              {children ?? "Sabarimala"}
+            </span>
+            <span className="ml-2">
+              <ChevronDown className="h-4 w-4" />
+            </span>
+          </>
+        )}
       </Button>
       <AnimatePresence>
         {isOpen && (
