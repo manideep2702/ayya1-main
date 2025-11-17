@@ -52,6 +52,7 @@ export default function AdminDataDropdown() {
           { label: "Annadanam List", onClick: () => router.push("/admin/annadanam") },
           { label: "Annadanam Scanner", onClick: () => router.push("/admin/annadanam/scan") },
           { label: "Annadanam Attendees", onClick: () => router.push("/admin/annadanam/attendees") },
+          { label: "Blocked Users", onClick: () => router.push("/admin/annadanam/blocked") },
           { label: "Pooja List", onClick: () => router.push("/admin/pooja") },
           { label: "Volunteer List", onClick: () => router.push("/admin/volunteers") },
           { label: "Block Pooja Dates", onClick: () => router.push("/admin/pooja/block") },

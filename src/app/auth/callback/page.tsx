@@ -3,7 +3,7 @@
 import { useEffect, Suspense } from "react";
 import { useAlert } from "@/components/ui/alert-provider";
 import { useRouter, useSearchParams } from "next/navigation";
-import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { getSupabaseBrowserClient, clearSupabaseAuthStorage } from "@/lib/supabase/client";
 
 function AuthCallbackContent() {
   const router = useRouter();
@@ -12,7 +12,25 @@ function AuthCallbackContent() {
 
   useEffect(() => {
     const run = async () => {
-      const supabase = getSupabaseBrowserClient();
+      let supabase = getSupabaseBrowserClient();
+      
+      // Helper to handle auth errors and retry
+      const handleAuthError = async (error: any, retryCount = 0): Promise<boolean> => {
+        const errorMsg = error?.message || String(error);
+        const isRefreshTokenError = 
+          errorMsg.includes("refresh_token_not_found") ||
+          errorMsg.includes("Invalid Refresh Token") ||
+          errorMsg.includes("Refresh Token Not Found");
+        
+        if (isRefreshTokenError && retryCount < 1) {
+          console.warn("Detected refresh token error, clearing storage and retrying...");
+          clearSupabaseAuthStorage();
+          // Force new client creation
+          supabase = getSupabaseBrowserClient();
+          return true; // Signal to retry
+        }
+        return false; // Don't retry
+      };
       const url = new URL(window.location.href);
       const code = url.searchParams.get("code");
       // Guard against React StrictMode double-invocation in dev by memoizing the handled code
@@ -59,7 +77,28 @@ function AuthCallbackContent() {
         return;
       }
       // If there's no code and we already have a session, decide based on profile
-      const { data: existing } = await supabase.auth.getSession();
+      let existing;
+      try {
+        const result = await supabase.auth.getSession();
+        existing = result.data;
+      } catch (error: any) {
+        const shouldRetry = await handleAuthError(error);
+        if (shouldRetry) {
+          try {
+            const result = await supabase.auth.getSession();
+            existing = result.data;
+          } catch (retryError) {
+            console.error("Session retrieval failed after retry:", retryError);
+            clearSupabaseAuthStorage();
+            router.replace("/sign-in/");
+            return;
+          }
+        } else {
+          console.error("Session retrieval error:", error);
+          router.replace("/sign-in/");
+          return;
+        }
+      }
       const decideDestWithExistingSession = async (fallbackNext: string) => {
         const { data: userRes } = await supabase.auth.getUser();
         const user = userRes?.user;
@@ -187,7 +226,35 @@ function AuthCallbackContent() {
       };
       // Rely on supabase-js auto exchange (detectSessionInUrl: true)
       // If session isn't ready yet, wait for auth state change
-      const { data: after } = await supabase.auth.getSession();
+      let after;
+      try {
+        const result = await supabase.auth.getSession();
+        after = result.data;
+      } catch (error: any) {
+        const shouldRetry = await handleAuthError(error);
+        if (shouldRetry) {
+          try {
+            const result = await supabase.auth.getSession();
+            after = result.data;
+          } catch (retryError) {
+            console.error("Final session retrieval failed:", retryError);
+            clearSupabaseAuthStorage();
+            show({ 
+              title: "Authentication Error", 
+              description: "Please sign in again.", 
+              variant: "error" 
+            });
+            router.replace("/sign-in/");
+            return;
+          }
+        } else {
+          console.error("Session retrieval error:", error);
+          clearSupabaseAuthStorage();
+          router.replace("/sign-in/");
+          return;
+        }
+      }
+      
       if (!after?.session) {
         const { data: sub } = supabase.auth.onAuthStateChange((_event, sess) => {
           if (sess?.user) {
@@ -204,8 +271,12 @@ function AuthCallbackContent() {
       }
       await runPostExchange();
     };
-    run();
-  }, [router, params]);
+    run().catch((error) => {
+      console.error("Auth callback error:", error);
+      clearSupabaseAuthStorage();
+      router.replace("/sign-in/");
+    });
+  }, [router, params, show]);
 
   return (
     <main className="min-h-[60vh] flex items-center justify-center text-sm text-muted-foreground">

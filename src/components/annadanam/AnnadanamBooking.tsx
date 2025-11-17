@@ -389,15 +389,42 @@ function SessionPicker({
   const renderCard = (title: string, options: { label: string; slot: Slot | null }[], value: string, setValue: (v: string) => void) => {
     const disabled = !(value && canPick(value));
     const isEvening = title === "Evening";
+    const isAfternoon = title === "Afternoon";
     let infoText = "";
     if (value && !canPick(value)) {
-      const isAfternoon = AFTERNOON_SLOTS.some((a) => a.label === value);
-      const groupRemaining = isAfternoon ? 150 - aftTotal : 150 - eveTotal;
+      const isAfternoonSlot = AFTERNOON_SLOTS.some((a) => a.label === value);
+      const groupRemaining = isAfternoonSlot ? 150 - aftTotal : 150 - eveTotal;
       if (groupRemaining <= 0) infoText = "Session full";
-      else infoText = isAfternoon
-        ? "Booking window: 11:00 AM–11:30 AM IST"
+      else infoText = isAfternoonSlot
+        ? "Booking window: 5:00 AM–11:30 AM IST"
         : "Booking window: 3:00 PM–7:30 PM IST";
     }
+    
+    // Determine which session's note to show based on current IST time
+    const now = new Date();
+    const utcMs = now.getTime() + now.getTimezoneOffset() * 60 * 1000;
+    const ist = new Date(utcMs + 5.5 * 60 * 60 * 1000);
+    let istMinutes = ist.getHours() * 60 + ist.getMinutes();
+    
+    // Dev override: ?devTime=HH:MM (IST) to simulate "now" for testing
+    try {
+      const sp = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+      const devTime = sp?.get("devTime");
+      if (devTime) {
+        const [hh, mm] = devTime.split(":").map((v) => parseInt(v, 10));
+        if (Number.isFinite(hh) && Number.isFinite(mm)) {
+          istMinutes = (hh % 24) * 60 + (mm % 60);
+        }
+      }
+    } catch {}
+    
+    // Show note based on booking windows:
+    // 5:00 AM (300 min) to 11:30 AM (690 min): Show Afternoon note
+    // 3:00 PM (900 min) to 7:30 PM (1170 min): Show Evening note
+    // After 7:30 PM or before 5:00 AM: Show Afternoon note (for next day)
+    const showAfternoonNote = (istMinutes >= 300 && istMinutes <= 690) || istMinutes > 1170 || istMinutes < 300;
+    const showEveningNote = istMinutes >= 900 && istMinutes <= 1170;
+    
     return (
       <Card>
         <CardContent className="p-6">
@@ -405,10 +432,17 @@ function SessionPicker({
             <Clock className="h-5 w-5 text-primary" />
             <h3 className="font-semibold text-lg">{title}</h3>
           </div>
-          {isEvening && (
+          {isAfternoon && showAfternoonNote && (
             <div className="mb-3 p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-md">
               <p className="text-xs text-blue-800 dark:text-blue-200">
-                <strong>Note:</strong> Please come early by 5 minutes and allowed up to 5 minutes more.
+                <strong>Note:</strong> Please arrive 5 minutes before your slot time. Grace period: up to 5 minutes after slot start.
+              </p>
+            </div>
+          )}
+          {isEvening && showEveningNote && (
+            <div className="mb-3 p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-md">
+              <p className="text-xs text-blue-800 dark:text-blue-200">
+                <strong>Note:</strong> Please arrive 5 minutes before your slot time. Grace period: up to 5 minutes after slot start.
               </p>
             </div>
           )}
@@ -572,6 +606,7 @@ export default function AnnadanamBooking() {
   const [myBookings, setMyBookings] = useState<Booking[]>([]);
   const [showMyBookings, setShowMyBookings] = useState(false);
   const [bookingInProgress, setBookingInProgress] = useState(false);
+  const [blockInfo, setBlockInfo] = useState<{is_blocked: boolean; blocked_until: string | null; reason: string | null; days_remaining: number} | null>(null);
   const { ensure } = useSupabase();
   const { show } = useAlert();
 
@@ -709,10 +744,47 @@ export default function AnnadanamBooking() {
 
   useEffect(() => {
     fetchMyBookings();
+    checkBlockStatus();
   }, []);
+
+  // Check if user is blocked
+  async function checkBlockStatus() {
+    try {
+      const supabase = await ensure();
+      const { data: userRes } = await supabase.auth.getUser();
+      const userId = userRes?.user?.id;
+      if (!userId) return;
+      
+      // Call RPC to check block status
+      const { data, error } = await supabase.rpc('get_user_block_info', { p_user_id: userId });
+      if (error) {
+        console.error('Error checking block status:', error);
+        return;
+      }
+      
+      if (data && data.length > 0) {
+        setBlockInfo(data[0]);
+      } else {
+        setBlockInfo({ is_blocked: false, blocked_until: null, reason: null, days_remaining: 0 });
+      }
+    } catch (err) {
+      console.error('Failed to check block status:', err);
+    }
+  }
 
   const handleBook = async (slotId: string) => {
     if (bookingInProgress) return; // Prevent double-booking
+    
+    // Check if user is blocked before proceeding
+    if (blockInfo?.is_blocked) {
+      show({
+        title: "Booking Blocked",
+        description: `You are blocked from booking until ${blockInfo.blocked_until ? new Date(blockInfo.blocked_until).toLocaleDateString() : 'the block expires'}. ${blockInfo.reason || ''}`,
+        variant: "error",
+        durationMs: 5000
+      });
+      return;
+    }
     
     const slot = slots.find((s) => s.id === slotId) || null;
     if (!slot) return;
@@ -928,12 +1000,15 @@ export default function AnnadanamBooking() {
       // Update UI
       await fetchSlots(selectedDateKey);
       await fetchMyBookings();
+      await checkBlockStatus(); // Refresh block status after booking
     } catch (err: any) {
       const msg = (err?.message || "Could not complete booking").toString();
       const hint = /duplicate key|unique/i.test(msg)
         ? "You already booked this session."
         : /capacity|full|closed/i.test(msg)
         ? "Slot is full or closed."
+        : /blocked/i.test(msg)
+        ? "Your account is temporarily blocked from booking."
         : "";
       show({ title: "Booking failed", description: [msg, hint].filter(Boolean).join("\n"), variant: "error" });
     } finally {
@@ -948,6 +1023,34 @@ export default function AnnadanamBooking() {
         <h2 className="text-2xl font-semibold">Annadanam Slot Booking</h2>
         <p className="text-muted-foreground">Choose a time below. Booking windows (IST): Afternoon 5:00 AM–11:30 AM, Evening 3:00 PM–7:30 PM.</p>
       </div>
+      
+      {/* Block warning message */}
+      {blockInfo?.is_blocked && (
+        <div className="mb-6 p-4 bg-red-50 dark:bg-red-950 border-2 border-red-500 dark:border-red-700 rounded-lg">
+          <div className="flex items-start gap-3">
+            <div className="flex-shrink-0 mt-0.5">
+              <svg className="h-6 w-6 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <h3 className="text-lg font-semibold text-red-900 dark:text-red-100 mb-2">
+                Booking Temporarily Blocked
+              </h3>
+              <p className="text-sm text-red-800 dark:text-red-200 mb-2">
+                {blockInfo.reason || 'You have been temporarily blocked from making bookings.'}
+              </p>
+              <div className="text-sm text-red-700 dark:text-red-300">
+                <p><strong>Blocked until:</strong> {blockInfo.blocked_until ? new Date(blockInfo.blocked_until).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'N/A'}</p>
+                <p><strong>Days remaining:</strong> {blockInfo.days_remaining} days</p>
+              </div>
+              <p className="text-xs text-red-600 dark:text-red-400 mt-3">
+                You will be able to book again after the block period expires. If you believe this is an error, please contact the administrator.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="grid gap-6 lg:grid-cols-3 mb-8">
         <div className="lg:col-span-1">
           <h3 className="text-base font-semibold mb-4">Select Date</h3>

@@ -647,30 +647,46 @@ export default function AdminPage() {
         </div>
 
         {/* Section Picker */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-          <button onClick={()=>router.push("/admin/export")} className={`rounded-xl border p-5 text-left bg-card/70 hover:bg-card transition shadow-sm`}>
-            <div className="text-lg font-semibold">Export Data</div>
-            <p className="text-sm text-muted-foreground mt-1">Download all sections</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-6">
+          <button onClick={()=>router.push("/admin/export")} className={`rounded-xl border p-6 text-left bg-card/70 hover:bg-card transition-all duration-300 shadow-sm hover:shadow-lg hover:scale-[1.02]`}>
+            <div className="text-lg font-semibold mb-1">Export Data</div>
+            <p className="text-sm text-muted-foreground">Download all sections</p>
           </button>
-          <button onClick={()=>router.push("/admin/annadanam")} className={`rounded-xl border p-5 text-left bg-card/70 hover:bg-card transition shadow-sm`}>
-            <div className="text-lg font-semibold">Annadanam</div>
-            <p className="text-sm text-muted-foreground mt-1">Filter and export bookings</p>
+          <button onClick={()=>router.push("/admin/annadanam")} className={`rounded-xl border p-6 text-left bg-card/70 hover:bg-card transition-all duration-300 shadow-sm hover:shadow-lg hover:scale-[1.02]`}>
+            <div className="text-lg font-semibold mb-1">Annadanam List</div>
+            <p className="text-sm text-muted-foreground">Filter and export bookings</p>
           </button>
-          <button onClick={()=>router.push("/admin/pooja")} className={`rounded-xl border p-5 text-left bg-card/70 hover:bg-card transition shadow-sm`}>
-            <div className="text-lg font-semibold">Pooja</div>
-            <p className="text-sm text-muted-foreground mt-1">Filter and export bookings</p>
+          <button onClick={()=>router.push("/admin/annadanam/scan")} className={`rounded-xl border p-6 text-left bg-card/70 hover:bg-card transition-all duration-300 shadow-sm hover:shadow-lg hover:scale-[1.02]`}>
+            <div className="text-lg font-semibold mb-1">Annadanam Scanner</div>
+            <p className="text-sm text-muted-foreground">Scan QR codes for attendance</p>
           </button>
-          <button onClick={()=>router.push("/admin/donations")} className={`rounded-xl border p-5 text-left bg-card/70 hover:bg-card transition shadow-sm`}>
-            <div className="text-lg font-semibold">Donations</div>
-            <p className="text-sm text-muted-foreground mt-1">Load and download</p>
+          <button onClick={()=>router.push("/admin/annadanam/attendees")} className={`rounded-xl border p-6 text-left bg-card/70 hover:bg-card transition-all duration-300 shadow-sm hover:shadow-lg hover:scale-[1.02]`}>
+            <div className="text-lg font-semibold mb-1">Annadanam Attendees</div>
+            <p className="text-sm text-muted-foreground">View attendance records</p>
           </button>
-          <button onClick={()=>router.push("/admin/contact")} className={`rounded-xl border p-5 text-left bg-card/70 hover:bg-card transition shadow-sm`}>
-            <div className="text-lg font-semibold">Contact Messages</div>
-            <p className="text-sm text-muted-foreground mt-1">Load and export</p>
+          <button onClick={()=>router.push("/admin/annadanam/blocked")} className={`rounded-xl border p-6 text-left bg-card/70 hover:bg-card transition-all duration-300 shadow-sm hover:shadow-lg hover:scale-[1.02]`}>
+            <div className="text-lg font-semibold mb-1">Blocked Users</div>
+            <p className="text-sm text-muted-foreground">Manage no-show blocks</p>
           </button>
-          <button onClick={()=>router.push("/admin/volunteers")} className={`rounded-xl border p-5 text-left bg-card/70 hover:bg-card transition shadow sm`}>
-            <div className="text-lg font-semibold">Volunteers</div>
-            <p className="text-sm text-muted-foreground mt-1">Load and export</p>
+          <button onClick={()=>router.push("/admin/pooja")} className={`rounded-xl border p-6 text-left bg-card/70 hover:bg-card transition-all duration-300 shadow-sm hover:shadow-lg hover:scale-[1.02]`}>
+            <div className="text-lg font-semibold mb-1">Pooja List</div>
+            <p className="text-sm text-muted-foreground">Filter and export bookings</p>
+          </button>
+          <button onClick={()=>router.push("/admin/volunteers")} className={`rounded-xl border p-6 text-left bg-card/70 hover:bg-card transition-all duration-300 shadow-sm hover:shadow-lg hover:scale-[1.02]`}>
+            <div className="text-lg font-semibold mb-1">Volunteer List</div>
+            <p className="text-sm text-muted-foreground">Load and export</p>
+          </button>
+          <button onClick={()=>router.push("/admin/pooja/block")} className={`rounded-xl border p-6 text-left bg-card/70 hover:bg-card transition-all duration-300 shadow-sm hover:shadow-lg hover:scale-[1.02]`}>
+            <div className="text-lg font-semibold mb-1">Block Pooja Dates</div>
+            <p className="text-sm text-muted-foreground">Manage blocked dates</p>
+          </button>
+          <button onClick={()=>router.push("/admin/donations")} className={`rounded-xl border p-6 text-left bg-card/70 hover:bg-card transition-all duration-300 shadow-sm hover:shadow-lg hover:scale-[1.02]`}>
+            <div className="text-lg font-semibold mb-1">Donations</div>
+            <p className="text-sm text-muted-foreground">Load and download</p>
+          </button>
+          <button onClick={()=>router.push("/admin/contact")} className={`rounded-xl border p-6 text-left bg-card/70 hover:bg-card transition-all duration-300 shadow-sm hover:shadow-lg hover:scale-[1.02]`}>
+            <div className="text-lg font-semibold mb-1">Contact Messages</div>
+            <p className="text-sm text-muted-foreground">Load and export</p>
           </button>
         </div>
         {/* The detailed extraction UIs are moved to dedicated pages. */}
